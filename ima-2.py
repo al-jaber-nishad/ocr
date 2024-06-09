@@ -58,6 +58,30 @@ def convert_pdf_to_images(pdf_path, output_folder):
     
     return image_paths
 
+
+def crop_image_to_content(image_path):
+    # Open the image
+    image = Image.open(image_path)
+    
+    # Convert image to grayscale
+    gray_image = image.convert('L')
+    
+    # Create a binary image (black and white)
+    binary_image = gray_image.point(lambda x: 0 if x == 255 else 255, '1')
+    
+    # Find the bounding box of the non-zero regions in the binary image
+    bbox = binary_image.getbbox()
+    
+    if bbox:
+        # Crop the image to the bounding box
+        cropped_image = image.crop(bbox)
+        # Save the cropped image, replacing the original image
+        cropped_image.save(image_path)
+    else:
+        print("No content found to crop.")
+
+
+
 # Path to the PDF file
 pdf_path = 'file.pdf'
 # Folder to save the images
@@ -72,7 +96,8 @@ english_words = []
 # Print the paths of the saved images
 for image_path in image_paths:
     print(image_path)
-
+    crop_image_to_content(image_path)
+    
     image_text = extract_text_from_image(image_path)
 
     bengali, english = extract_words(image_text)

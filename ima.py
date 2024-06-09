@@ -35,8 +35,8 @@ def extract_words(text):
     return bengali_words, english_words
 
 # Path to the image file
-# image_path = 'output_images/page_1.png'
 image_path = 'image.png'
+# image_path = 'image-2.png'
 
 # Extract text from the image
 image_text = extract_text_from_image(image_path)
@@ -54,6 +54,7 @@ ben_str = ""
 for item in bengali_words:
     ben_str += " "+item
 
+print("bengali_words", ben_str)
 
 def save_text_to_file(text, output_path):
     # Save the text to a file
