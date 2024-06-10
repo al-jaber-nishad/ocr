@@ -42,13 +42,13 @@ def extract_words(text):
 
 image_path = 'image.png'
 
-def convert_pdf_to_images(pdf_path, output_folder):
+def convert_pdf_to_images(pdf_path, output_folder, dpi=120):
     # Create the output folder if it doesn't exist
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     
-    # Convert PDF pages to images
-    images = convert_from_path(pdf_path)
+    # Convert PDF pages to images with specified DPI
+    images = convert_from_path(pdf_path, dpi=dpi)
     
     image_paths = []
     for i, image in enumerate(images):
@@ -57,7 +57,6 @@ def convert_pdf_to_images(pdf_path, output_folder):
         image_paths.append(image_path)
     
     return image_paths
-
 
 def crop_image_to_content(image_path):
     # Open the image
@@ -80,6 +79,36 @@ def crop_image_to_content(image_path):
     else:
         print("No content found to crop.")
 
+def extract_key_value_pairs(text):
+    data = {}
+    key_value_patterns = {
+        'National ID': r'National ID (\d+)',
+        'Pin': r'Pin (\d+)',
+        'Name(Bangla)': r'Name\(Bangla\) (.+)',
+        'Name(English)': r'Name\(English\) (.+)',
+        'Date of Birth': r'Date of Birth (\d{4}-\d{2}-\d{2})',
+        'Birth Place': r'Birth Place (.+)',
+        'Father Name': r'Father Name (.+)',
+        'Mother Name': r'Mother Name (.+)',
+        'Spouse Name': r'Spouse Name (.+)',
+        'Blood Group': r'Blood Group (.+)',
+        'District': r'District (.+)',
+        'City Corporation Or Municipality': r'City Corporation Or Municipality (.+)',
+        'Upozila': r'Upozila (.+)',
+        'Additional Mouza/Moholla': r'Additional Mouza/Moholla (.+)',
+        'Additional Village/Road': r'Additional Village/Road (.+)',
+        'Village/Road': r'Village/Road (.+)',
+        'Home/Holding No': r'Home/HoldingNo (.+)',
+        'Postal Code': r'Postal Code (\d+)',
+        'Post Office': r'Post Office (.+)'
+    }
+
+    for key, pattern in key_value_patterns.items():
+        match = re.search(pattern, text)
+        if match:
+            data[key] = match.group(1).strip()
+
+    return data
 
 
 # Path to the PDF file
@@ -90,22 +119,26 @@ output_folder = 'output_img'
 # Convert PDF to images
 image_paths = convert_pdf_to_images(pdf_path, output_folder)
 
-# image_text = []
+total_text = []
 bengali_words = []
 english_words = []
 # Print the paths of the saved images
 for image_path in image_paths:
-    print(image_path)
     crop_image_to_content(image_path)
     
     image_text = extract_text_from_image(image_path)
+    total_text.append(image_text)
+
+    print(image_path)
+    print(image_text)
 
     bengali, english = extract_words(image_text)
     bengali_words.append(bengali)
     english_words.append(english)
 
-
-
+total_text = "\n".join(total_text)
+data = extract_key_value_pairs(total_text)
+print("data", data)
 
 
 
@@ -141,8 +174,3 @@ output_text_file = "extracted_text.txt"
 
 # Save the extracted text to a file
 save_text_to_file(ben_str, output_text_file)
-
-
-# Print the results
-print("Bengali Words:", bengali_words)
-print("English Words:", english_words)
