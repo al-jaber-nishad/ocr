@@ -3,15 +3,71 @@ import re
 import pytesseract
 from PIL import Image
 import json
+import cv2
+import numpy as np
+from pdf2image import convert_from_path
 
+def pdf_to_images(pdf_path, dpi=300):
+    # Convert PDF to images
+    images = convert_from_path(pdf_path, dpi=dpi)
+    image_paths = []
+    for i, img in enumerate(images):
+        image_path = f'page_{i}.png'
+        img.save(image_path, 'PNG')
+        image_paths.append(image_path)
+    return image_paths
+
+def preprocess_image(image_path):
+    # Load image using OpenCV
+    image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Apply adaptive thresholding to binarize the image
+    binary_image = cv2.adaptiveThreshold(gray, 255, 
+                                         cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                         cv2.THRESH_BINARY, 11, 2)
+    # Find contours
+    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        # Get bounding box of largest contour
+        c = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(c)
+
+        # Crop the image to the bounding box
+        cropped_image = image[y:y+h, x:x+w]
+    else:
+        cropped_image = image
+
+    # Resize the cropped image to simulate a higher DPI
+    height, width = cropped_image.shape[:2]
+    new_height = int(height * 2)  # Increase height by 2 times
+    new_width = int(width * 2)  # Increase width by 2 times
+    resized_image = cv2.resize(cropped_image, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
+
+    # Convert to grayscale and binarize again
+    gray_resized = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
+    binary_resized = cv2.adaptiveThreshold(gray_resized, 255, 
+                                           cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                           cv2.THRESH_BINARY, 11, 2)
+    # Remove noise
+    kernel = np.ones((1, 1), np.uint8)
+    binary_resized = cv2.dilate(binary_resized, kernel, iterations=1)
+    binary_resized = cv2.erode(binary_resized, kernel, iterations=1)
+
+    # Save the processed image
+    processed_image_path = image_path.replace('.png', '_processed.png')
+    cv2.imwrite(processed_image_path, binary_resized)
+    return processed_image_path
 
 def extract_text_from_image(image_path):
-    # Open the image file
-    img = Image.open(image_path)
+    # Preprocess the image
+    processed_image_path = preprocess_image(image_path)
+    # Open the processed image file
+    img = Image.open(processed_image_path)
     # Use pytesseract to do OCR on the image
     text = pytesseract.image_to_string(img, lang='ben+eng')  # Specify Bengali and English languages
     return text
-
 
 def extract_text_from_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
@@ -19,37 +75,6 @@ def extract_text_from_pdf(pdf_path):
         for page in pdf.pages:
             text += page.extract_text()
     return text
-
-def extract_image_from_pdf(pdf_path, page_num, image_type):
-    with pdfplumber.open(pdf_path) as pdf:
-        page = pdf.pages[page_num]
-        if not page.images:
-            print(f"No images found on page {page_num}")
-            return None
-        
-        if image_type == 'Person image':
-            # Assuming the person image is the first image on the page
-            if len(page.images) > 0:
-                image = page.images[0]
-            else:
-                print(f"No 'Person image' found on page {page_num}")
-                return None
-        elif image_type == 'Person signature':
-            # Assuming the signature is the second image on the page
-            if len(page.images) > 1:
-                image = page.images[1]
-            else:
-                print(f"No 'Person signature' found on page {page_num}")
-                return None
-        
-        image_bbox = (image['x0'], image['top'], image['x1'], image['bottom'])
-        image_cropped = page.within_bbox(image_bbox)
-        pil_image = image_cropped.to_image().original
-
-        image_path = f"{image_type.replace(' ', '_')}.png"
-        pil_image.save(image_path)
-        return image_path
-
 
 def extract_key_value_pairs(text):
     data = {}
@@ -81,8 +106,6 @@ def extract_key_value_pairs(text):
 
     return data
 
-
-
 def extract_words(text):
     # Extended regex pattern to match all Bengali characters, including joint characters
     bengali_pattern = re.compile(r'[\u0980-\u09FF\u200C-\u200D]+')
@@ -94,22 +117,25 @@ def extract_words(text):
 
     return bengali_words, english_words
 
-
 def main(pdf_path):
-    
-    # Extract images (assuming images are on the first page)
-    person_image_path = extract_image_from_pdf(pdf_path, 4, 'Person image')
-    person_signature_path = extract_image_from_pdf(pdf_path, 4, 'Person signature')
+    # Extract images from the PDF and process them
+    image_paths = pdf_to_images(pdf_path)
 
-    # Extract key-value pairs from the text
-    text = extract_text_from_pdf(pdf_path)
+    extracted_texts = []
+    for image_path in image_paths:
+        text = extract_text_from_image(image_path)
+        extracted_texts.append(text)
 
-    bengali_words, english_words = extract_words(text)
-    print(bengali_words)
+    # Extract text directly from the PDF
+    text_from_pdf = extract_text_from_pdf(pdf_path)
 
-    data = extract_key_value_pairs(text)
-    data['Person image'] = person_image_path
-    data['Person signature'] = person_signature_path
+    # Combine texts
+    combined_text = text_from_pdf + "\n" + "\n".join(extracted_texts)
+
+    # Extract key-value pairs from the combined text
+    data = extract_key_value_pairs(combined_text)
+    print("data", data)
+    bengali_words, english_words = extract_words(combined_text)
 
     # Save the extracted data to a JSON file
     with open('extracted_data.json', 'w', encoding='utf-8') as f:
