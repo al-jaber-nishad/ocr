@@ -3,6 +3,14 @@ import pytesseract
 import re
 from pdf2image import convert_from_path
 import os
+import pdfplumber
+
+
+key_list = [
+    "Upozila",
+    "Union/Ward",
+    "Post Office"
+]
 
 def extract_text_from_image(image_path):
     # Open the image file
@@ -11,9 +19,24 @@ def extract_text_from_image(image_path):
     text = pytesseract.image_to_string(img, lang='ben+eng')  # Specify Bengali and English languages
     return text
 
-# def print_unicode_characters(text):
-#     for char in text:
-#         print(f"Character: {char}, Unicode: {ord(char)}")
+def extract_image_from_pdf(pdf_path, page_num, image_type):
+    with pdfplumber.open(pdf_path) as pdf:
+        page = pdf.pages[page_num]
+        if image_type == 'Person image':
+            # Assuming the person image is the first image on the page
+            image = page.images[0]
+        elif image_type == 'Person signature':
+            # Assuming the signature is the second image on the page
+            image = page.images[1]
+        
+        image_bbox = (image['x0'], image['top'], image['x1'], image['bottom'])
+        image_cropped = page.within_bbox(image_bbox)
+        pil_image = image_cropped.to_image().original
+
+        image_path = f"{image_type.replace(' ', '_')}.png"
+        pil_image.save(image_path)
+        return image_path
+    
 
 def join_bengali_characters(text):
     # Join characters correctly, considering Bengali joint characters
@@ -40,7 +63,6 @@ def extract_words(text):
 # image_path = 'output_images/page_1.png'
 
 
-image_path = 'image.png'
 
 def convert_pdf_to_images(pdf_path, output_folder, dpi=120):
     # Create the output folder if it doesn't exist
@@ -79,34 +101,91 @@ def crop_image_to_content(image_path):
     else:
         print("No content found to crop.")
 
+# def extract_key_value_pairs(text):
+#     data = {}
+#     key_value_patterns = {
+#         'National ID': r'National ID:?\s*([\d-]+)',
+#         'Pin': r'Pin:?\s*([\d-]+)',
+#         'Name(Bangla)': r'Name\(Bangla\):?\s*(.+)',
+#         'Name(English)': r'Name\(English\):?\s*(.+)',
+#         'Date of Birth': r'Date of Birth:?\s*([\d-]+)',
+#         'Birth Place': r'Birth Place:?\s*(.+)',
+#         'Father Name': r'Father Name:?\s*(.+)',
+#         'Mother Name': r'Mother Name:?\s*(.+)',
+#         'Spouse Name': r'Spouse Name:?\s*(.+)',
+#         'Blood Group': r'Blood Group:?\s*(.+)',
+#         'Education': r'Education:?\s*(.+)',
+#         'District': r'District:?\s*(.+)',
+#         'City Corporation Or Municipality': r'City Corporation Or Municipality:?\s*(.+)',
+#         'Upozila': r'Upozila:?\s*(.+)',
+#         'Additional Mouza/Moholla': r'Additional Mouza/Moholla:?\s*(.+)',
+#         'Additional Village/Road': r'Additional Village/Road:?\s*(.+)',
+#         'Village/Road': r'Village/Road:?\s*(.+)',
+#         'Home/Holding No': r'Home/HoldingNo:?\s*(.+)',
+#         'Postal Code': r'Postal Code:?\s*([\d-]+)',
+#         'Post Office': r'Post Office:?\s*(.+)'
+#     }
+
+#     for key, pattern in key_value_patterns.items():
+#         match = re.search(pattern, text)
+#         if match:
+#             data[key] = match.group(1).strip()
+
+#     return data
+
+
 def extract_key_value_pairs(text):
     data = {}
     key_value_patterns = {
-        'National ID': r'National ID (\d+)',
-        'Pin': r'Pin (\d+)',
-        'Name(Bangla)': r'Name\(Bangla\) (.+)',
-        'Name(English)': r'Name\(English\) (.+)',
-        'Date of Birth': r'Date of Birth (\d{4}-\d{2}-\d{2})',
-        'Birth Place': r'Birth Place (.+)',
-        'Father Name': r'Father Name (.+)',
-        'Mother Name': r'Mother Name (.+)',
-        'Spouse Name': r'Spouse Name (.+)',
-        'Blood Group': r'Blood Group (.+)',
-        'District': r'District (.+)',
-        'City Corporation Or Municipality': r'City Corporation Or Municipality (.+)',
-        'Upozila': r'Upozila (.+)',
-        'Additional Mouza/Moholla': r'Additional Mouza/Moholla (.+)',
-        'Additional Village/Road': r'Additional Village/Road (.+)',
-        'Village/Road': r'Village/Road (.+)',
-        'Home/Holding No': r'Home/HoldingNo (.+)',
-        'Postal Code': r'Postal Code (\d+)',
-        'Post Office': r'Post Office (.+)'
+        'National ID': r'National ID:?\s*([\d-]+)',
+        'Pin': r'Pin:?\s*([\d-]+)',
+        'Name(Bangla)': r'Name\(Bangla\):?\s*(.+)',
+        'Name(English)': r'Name\(English\):?\s*(.+)',
+        'Date of Birth': r'Date of Birth:?\s*([\d-]+)',
+        'Birth Place': r'Birth Place:?\s*(.+)',
+        'Father Name': r'Father Name:?\s*(.+)',
+        'Mother Name': r'Mother Name:?\s*(.+)',
+        'Spouse Name': r'Spouse Name:?\s*(.+)',
+        'Blood Group': r'Blood Group:?\s*(.+)',
+        'Education': r'Education:?\s*(.+)',
+        'District': r'District:?\s*(.+)',
+        'City Corporation Or Municipality': r'City Corporation Or Municipality:?\s*(.+)',
+        'Upozila': r'Upozila:?\s*(.+)',
+        'Union/Ward': r'Union/Ward:?\s*(.+)',
+        'Additional Mouza/Moholla': r'Additional Mouza/Moholla:?\s*(.+)',
+        'Additional Village/Road': r'Additional Village/Road:?\s*(.+)',
+        'Village/Road': r'Village/Road:?\s*(.+)',
+        'Home/Holding No': r'Home/HoldingNo:?\s*(.+)',
+        'Postal Code': r'Postal Code:?\s*([\d-]+)',
+        'Post Office': r'Post Office:?\s*(.+)'
     }
 
-    for key, pattern in key_value_patterns.items():
-        match = re.search(pattern, text)
-        if match:
-            data[key] = match.group(1).strip()
+    key_list = [
+        "Upozila",
+        "Union/Ward",
+        "Post Office"
+    ]
+
+    lines = text.split('\n')
+    for line in lines:
+        for key, pattern in key_value_patterns.items():
+            match = re.match(pattern, line.strip())
+            if match:
+                data[key] = match.group(1).strip()
+
+    # Handle overlapping values for specific keys
+    for key in key_list:
+        if key in data:
+            value = data[key]
+            # Split value by space and reassign parts to correct keys if needed
+            parts = value.split()
+            for part in parts:
+                if re.match(r'^\d{4,}$', part):  # Check for a postal code
+                    data['Postal Code'] = part
+                    data[key] = value.replace(part, '').strip()
+                elif part.lower() in ['postal', 'code']:
+                    data['Postal Code'] = parts[-1]
+                    data[key] = ' '.join(parts[:-2]).strip()
 
     return data
 
@@ -129,31 +208,31 @@ for image_path in image_paths:
     image_text = extract_text_from_image(image_path)
     total_text.append(image_text)
 
-    print(image_path)
-    print(image_text)
+    # print(image_path)
+    # print(image_text)
 
     bengali, english = extract_words(image_text)
     bengali_words.append(bengali)
     english_words.append(english)
 
 total_text = "\n".join(total_text)
+
+print("total_text", total_text)
+
 data = extract_key_value_pairs(total_text)
-print("data", data)
+
+# # Extract images (assuming images are on the first page)
+# person_image_path = extract_image_from_pdf(pdf_path, 0, 'Person image')
+# person_signature_path = extract_image_from_pdf(pdf_path, 0, 'Person signature')
+
+# # Extract key-value pairs from the text
+# data['Person image'] = person_image_path
+# data['Person signature'] = person_signature_path
 
 
+# print("data", data)
 
 
-
-# image_text = ""
-# Extract text from the image
-
-# Print each character's Unicode
-# print_unicode_characters(image_text)
-
-# Join separated Bengali characters correctly
-# corrected_text = join_bengali_characters(image_text)
-
-# Extract Bengali and English words
 
 ben_str = ""
 for word in bengali_words:
