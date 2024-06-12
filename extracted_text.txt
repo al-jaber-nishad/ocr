@@ -1,1 +1,253 @@
- ভুলু জল দাশ কক্সবাজার রামানন্দ জল দাশ অজ বালা দাশ কৃষ্ণ রাণী দাশ শ্রমিক চট্টগ্রাম কক্সবাজার ঈদগাও জালালাবাদ ঈদগাঁও মাছুয়াপাড়া সুদর্শন দাশের বাড়ী ঈদগাও চট্টগ্রাম চট্টগ্রাম কক্সবাজার কক্সবাজার সদর ঈদগাও মাছুয়াপাড়া সুদর্শন দাশের বাড়ী ঈদগাও চট্টগ্রাম ৫ম শ্রেণী মাছুয়া পাড়া ওপাশ
+class ActionLog(models.Model):
+    time = models.DateTimeField()
+    username = models.CharField(max_length=50)
+    action_type = models.SmallIntegerField()
+    action_args = models.CharField(max_length=512, null=True, blank=True)
+
+class AdList(models.Model):
+    user = models.ForeignKey('User', on_delete=models.CASCADE)
+    name = models.CharField(max_length=128)
+    external_contacts_count = models.IntegerField()
+    internal_contacts_count = models.IntegerField()
+    international_contacts_count = models.IntegerField()
+    created_at = models.DateTimeField()
+
+class AdCellNumbers(models.Model):
+    list = models.ForeignKey(AdList, on_delete=models.CASCADE)
+    cell_numbers = models.TextField()
+
+class AllocatedNumber(models.Model):
+    bpl_number = models.CharField(max_length=20)
+    user = models.ForeignKey('User', on_delete=models.CASCADE, null=True, blank=True)
+
+class PresetPackage(models.Model):
+    name = models.CharField(max_length=50)
+    external_sms_count = models.IntegerField()
+    internal_sms_count = models.IntegerField()
+    international_sms_count = models.IntegerField()
+    external_per_sms_charge = models.DecimalField(max_digits=7, decimal_places=5)
+    internal_per_sms_charge = models.DecimalField(max_digits=7, decimal_places=5)
+    international_per_sms_charge = models.DecimalField(max_digits=7, decimal_places=5)
+    created_by = models.BigIntegerField()
+    created_on = models.DateTimeField()
+    modified_by = models.BigIntegerField()
+    modified_on = models.DateTimeField()
+    is_deleted = models.BooleanField()
+    type = models.SmallIntegerField()
+    mask_type = models.SmallIntegerField()
+    bill_type = models.SmallIntegerField()
+    is_deletable = models.BooleanField()
+
+class Contact(models.Model):
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100, null=True, blank=True)
+    cell_no = models.CharField(max_length=15)
+    email = models.CharField(max_length=50, null=True, blank=True)
+    company = models.CharField(max_length=50, null=True, blank=True)
+    job_title = models.CharField(max_length=50, null=True, blank=True)
+    user = models.ForeignKey('User', on_delete=models.CASCADE)
+    created_at = models.DateTimeField()
+    modified_at = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField()
+    cell_count = models.SmallIntegerField()
+
+class ContactCell(models.Model):
+    cell_no = models.CharField(max_length=15)
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
+
+class ContactGroup(models.Model):
+    name = models.CharField(max_length=30)
+    external_contact_count = models.IntegerField()
+    internal_contact_count = models.IntegerField()
+    international_contact_count = models.IntegerField()
+    created_at = models.DateTimeField()
+    modified_at = models.DateTimeField(null=True, blank=True)
+    user = models.ForeignKey('User', on_delete=models.CASCADE)
+    is_deleted = models.BooleanField()
+
+class ContactsInGroup(models.Model):
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
+    group = models.ForeignKey(ContactGroup, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class ExceptionLog(models.Model):
+    time = models.DateTimeField()
+    type = models.CharField(max_length=256)
+    message = models.CharField(max_length=512)
+    inner_message = models.CharField(max_length=512, null=True, blank=True)
+    stack_trace = models.TextField()
+
+class Feedback(models.Model):
+    type = models.SmallIntegerField()
+    message = models.CharField(max_length=256)
+    username = models.CharField(max_length=64)
+    submission_date = models.DateTimeField()
+    user = models.ForeignKey('User', on_delete=models.CASCADE, null=True, blank=True)
+    subject = models.CharField(max_length=64)
+    seen = models.BooleanField()
+    cell_no = models.CharField(max_length=20, null=True, blank=True)
+
+class IncomingSms(models.Model):
+    owner = models.ForeignKey('User', on_delete=models.CASCADE)
+    sender = models.CharField(max_length=13)
+    inserted_on = models.DateTimeField()
+    text = models.CharField(max_length=1500)
+    is_notified = models.BooleanField()
+    operator_prefix = models.CharField(max_length=6)
+    msg_parts = models.SmallIntegerField()
+    origin_time = models.DateTimeField()
+    sender_id = models.ForeignKey(Contact, on_delete=models.CASCADE, null=True, blank=True)
+    delete_status = models.SmallIntegerField()
+
+class Label(models.Model):
+    name = models.CharField(max_length=50)
+    created_at = models.DateTimeField()
+    modified_at = models.DateTimeField()
+    user = models.ForeignKey('User', on_delete=models.CASCADE)
+    is_deleted = models.BooleanField()
+
+class PackageHistory(models.Model):
+    assigned_package = models.ForeignKey('AssignedPackage2', on_delete=models.CASCADE)
+    done_on = models.DateTimeField()
+    done_by_user_id = models.BigIntegerField()
+    action_type = models.SmallIntegerField()
+    action_args = models.CharField(max_length=100)
+
+class Page(models.Model):
+    name = models.CharField(max_length=128)
+    link = models.CharField(max_length=512)
+    parent_id = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    description = models.CharField(max_length=256, null=True, blank=True)
+    help_text = models.CharField(max_length=256, null=True, blank=True)
+    type = models.SmallIntegerField(null=True, blank=True)
+    order = models.SmallIntegerField()
+
+class PagesInRole(models.Model):
+    role = models.ForeignKey('Role', on_delete=models.CASCADE)
+    page = models.ForeignKey(Page, on_delete=models.CASCADE)
+
+class Person(models.Model):
+    first_name = models.CharField(max_length=64)
+    full_name = models.CharField(max_length=128)
+    last_name = models.CharField(max_length=64)
+    father_name = models.CharField(max_length=128)
+    mother_name = models.CharField(max_length=128)
+    date_of_birth = models.DateField()
+    is_female = models.BooleanField()
+    address = models.CharField(max_length=255, null=True, blank=True)
+
+class AssignedPackage2(models.Model):
+    user = models.ForeignKey('User', on_delete=models.CASCADE)
+    preset_package = models.ForeignKey(PresetPackage, on_delete=models.CASCADE)
+    bill_type = models.SmallIntegerField()
+    mask_type = models.SmallIntegerField()
+    status = models.SmallIntegerField()
+    active_from = models.DateTimeField()
+    expires_on = models.DateTimeField()
+    external_sms_count = models.IntegerField()
+    internal_sms_count = models.IntegerField()
+    international_sms_count = models.IntegerField()
+    external_sent_sms_count = models.IntegerField()
+    internal_sent_sms_count = models.IntegerField()
+    international_sent_sms_count = models.IntegerField()
+    external_sms_rate = models.DecimalField(max_digits=6, decimal_places=4)
+    internal_sms_rate = models.DecimalField(max_digits=6, decimal_places=4)
+    international_sms_rate = models.DecimalField(max_digits=6, decimal_places=4)
+
+class Role(models.Model):
+    role_name = models.CharField(max_length=64)
+    home_page = models.ForeignKey(Page, on_delete=models.CASCADE)
+    description = models.CharField(max_length=512, null=True, blank=True)
+
+class Schedule(models.Model):
+    name = models.CharField(max_length=50)
+    try_if_failed = models.IntegerField(default=-1)
+    total_try_if_failed = models.IntegerField(default=0)
+    start_on = models.DateTimeField()
+    end_on = models.DateTimeField(default=models.functions.Now)
+    status = models.IntegerField(default=1)
+    created_at = models.DateTimeField(default=models.functions.Now)
+    modified_at = models.DateTimeField(default=models.functions.Now)
+    created_by = models.ForeignKey('User', related_name='created_schedules', on_delete=models.CASCADE)
+    modified_by = models.ForeignKey('User', related_name='modified_schedules', on_delete=models.CASCADE, null=True, blank=True)
+    repeat_every = models.IntegerField(default=-1)
+    ends_after = models.IntegerField(default=-1)
+    repeat_on = models.CharField(max_length=255)
+    is_repeat = models.IntegerField(default=0)
+    repeat_type = models.IntegerField(default=-1)
+    is_deleted = models.BooleanField()
+    sms = models.ForeignKey('Sms', on_delete=models.CASCADE, null=True, blank=True)
+
+class ScheduleSms(models.Model):
+    sms = models.ForeignKey('Sms', on_delete=models.CASCADE)
+    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    next_scheduled_date = models.DateTimeField()
+
+class Settings(models.Model):
+    key = models.CharField(max_length=32)
+    value = models.CharField(max_length=256)
+
+class Sms(models.Model):
+    owner = models.ForeignKey('User', on_delete=models.CASCADE)
+    sender = models.CharField(max_length=20, null=True, blank=True)
+    sender_id = models.ForeignKey(Contact, on_delete=models.CASCADE, null=True, blank=True)
+    receivers = models.TextField(null=True, blank=True)
+    receiver_count = models.IntegerField()
+    sent_count = models.IntegerField()
+    success_count = models.IntegerField()
+    fail_count = models.IntegerField()
+    cateogry = models.SmallIntegerField()
+    content_type = models.SmallIntegerField()
+    language = models.SmallIntegerField()
+    time = models.DateTimeField()
+    text = models.CharField(max_length=1600, null=True, blank=True)
+    binary_data = models.BinaryField(null=True, blank=True)
+    status = models.SmallIntegerField()
+    delete_status = models.SmallIntegerField()
+    failure_reason = models.CharField(max_length=1000, null=True, blank=True)
+    msg_part_count = models.SmallIntegerField(default=1)
+    channel = models.SmallIntegerField()
+    is_flash = models.BooleanField(null=True, blank=True)
+
+class SmsLabel(models.Model):
+    sms = models.ForeignKey(Sms, on_delete=models.CASCADE)
+    label = models.ForeignKey(Label, on_delete=models.CASCADE)
+    sms_at = models.DateTimeField(null=True, blank=True)
+
+class SplittedSms(models.Model):
+    sms = models.ForeignKey(Sms, on_delete=models.CASCADE)
+    receiver = models.CharField(max_length=20)
+    receiver_id = models.ForeignKey(Contact, on_delete=models.CASCADE, null=True, blank=True)
+    msg_count = models.SmallIntegerField(default=1)
+    status = models.SmallIntegerField()
+    customer_bill = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    operator_bill = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    operation_type = models.IntegerField()
+    operator_prefix = models.CharField(max_length=10)
+    reason_code = models.IntegerField(null=True, blank=True)
+    received_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+class User(models.Model):
+    name = models.CharField(max_length=60)
+    group = models.ForeignKey('UserGroup', on_delete=models.CASCADE, default=4)
+    type = models.IntegerField()
+    activity_status = models.IntegerField()
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
+    bpl_number = models.CharField(max_length=20)
+    cell_number = models.CharField(max_length=20, null=True, blank=True)
+    email = models.CharField(max_length=128, null=True, blank=True)
+    password = models.BinaryField()
+    password_salt = models.CharField(max_length=8)
+    person = models.ForeignKey(Person, on_delete=models.CASCADE)
+    name_to_show_as_sender = models.CharField(max_length=15, null=True, blank=True)
+    registered_on = models.DateTimeField(null=True, blank=True)
+    registered_by = models.BigIntegerField(null=True, blank=True)
+    company = models.CharField(max_length=128, null=True, blank=True)
+
+class UserGroup(models.Model):
+    name = models.CharField(max_length=50)
+    is_deleted = models.BooleanField()
+    created_at = models.DateTimeField()
+    modified_at = models.DateTimeField()
